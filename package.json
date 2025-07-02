@@ -1,0 +1,35 @@
+{
+  "name": "jira-worklog-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/react-datepicker": "^6.2.0",
+    "chart.js": "^4.5.0",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^12.20.2",
+    "lucide-react": "^0.344.0",
+    "next": "^15.3.4",
+    "react": "^18.2.0",
+    "react-chartjs-2": "^5.3.0",
+    "react-datepicker": "^8.4.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "14.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.2.0"
+  }
+}
