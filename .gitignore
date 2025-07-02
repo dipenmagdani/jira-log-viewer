@@ -31,7 +31,8 @@ dist-ssr
 
 # Vercel
 .vercel
-
+.bolt
+.cursor
 # TypeScript
 *.tsbuildinfo
 
