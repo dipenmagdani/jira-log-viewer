@@ -6,6 +6,8 @@ const nextConfig = {
   images: {
     domains: ["images.unsplash.com"],
   },
+  allowedOrigins: ["http://192.168.7.118:3000"],
+
 };
 
 module.exports = nextConfig;
