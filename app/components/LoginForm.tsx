@@ -22,7 +22,9 @@ interface LoginFormProps {
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
-  const [siteUrl, setSiteUrl] = useState("https://webelight.atlassian.net/");
+  const [siteUrl, setSiteUrl] = useState(
+    process.env.NEXT_PUBLIC_JIRA_SITE_URL || ""
+  );
   const [email, setEmail] = useState("");
   const [apiToken, setApiToken] = useState("");
   const [showToken, setShowToken] = useState(false);

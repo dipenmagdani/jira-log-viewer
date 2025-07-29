@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { LogIn, Activity, Calendar, Clock } from "lucide-react";
+import { Activity } from "lucide-react";
 import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
 
