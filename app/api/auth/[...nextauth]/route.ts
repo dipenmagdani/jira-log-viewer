@@ -13,7 +13,8 @@ const authOptions: NextAuthOptions = {
           audience: "api.atlassian.com",
           prompt: "consent",
           response_type: "code",
-          scope: "read:jira-work read:jira-user offline_access",
+          scope:
+            "read:jira-work read:jira-user offline_access read:issue:jira read:project:jira",
         },
       },
       token: "https://auth.atlassian.com/oauth/token",
@@ -31,8 +32,9 @@ const authOptions: NextAuthOptions = {
     },
   ],
   callbacks: {
-    async jwt({ token, account }) {
+    async jwt({ token, account, profile }) {
       if (account) {
+        console.log("JWT Callback - Account:", account);
         token.accessToken = account.access_token;
         token.refreshToken = account.refresh_token;
         token.expiresAt = account.expires_at;
@@ -40,10 +42,16 @@ const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
+      console.log("Session Callback - Token:", token);
       session.accessToken = token.accessToken as string;
       session.refreshToken = token.refreshToken as string;
       session.expiresAt = token.expiresAt as number;
       return session;
+    },
+    async signIn({ account, profile }) {
+      console.log("SignIn Callback - Account:", account);
+      console.log("SignIn Callback - Profile:", profile);
+      return true;
     },
   },
   pages: {
