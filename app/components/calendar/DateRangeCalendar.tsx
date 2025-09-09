@@ -1,8 +1,19 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, isSameDay, isToday } from "date-fns";
-import { Plus, Edit, CheckCircle } from "lucide-react";
-import type { DateRangeCalendarProps, JiraWorklog } from "../../types/dashboard";
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  getDay,
+  isSameDay,
+  isToday,
+} from "date-fns";
+import { Plus, Edit, CheckCircle, RefreshCw } from "lucide-react";
+import type {
+  DateRangeCalendarProps,
+  JiraWorklog,
+} from "../../types/dashboard";
 import WorklogList from "../worklog/WorklogList";
 
 const DateRangeCalendar = ({
@@ -17,10 +28,14 @@ const DateRangeCalendar = ({
   setWorklogForm,
   setShowWorklogModal,
   setDayWorklogs,
+  onRefresh,
+  isRefreshing,
 }: DateRangeCalendarProps) => {
   // State for showing worklog list modal
   const [showWorklogList, setShowWorklogList] = useState(false);
-  const [selectedDateWorklogs, setSelectedDateWorklogs] = useState<JiraWorklog[]>([]);
+  const [selectedDateWorklogs, setSelectedDateWorklogs] = useState<
+    JiraWorklog[]
+  >([]);
 
   // If we don't have a date range, use the current month
   const defaultDate = new Date();
@@ -160,19 +175,53 @@ const DateRangeCalendar = ({
       <div className="calendar-container page-transition">
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 mb-8 p-6 rounded-2xl bg-gradient-to-r from-slate-800/60 via-slate-700/40 to-slate-800/60 backdrop-blur-sm border border-slate-600/30 shadow-xl">
           <div className="flex flex-col space-y-2">
-            <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
-              Worklog Calendar
-            </h2>
+            <div className="flex items-center space-x-3">
+              <h2 className="text-2xl font-bold bg-gradient-to-r from-white via-blue-200 to-purple-200 bg-clip-text text-transparent">
+                Worklog Calendar
+              </h2>
+              {onRefresh && (
+                <button
+                  onClick={onRefresh}
+                  disabled={isRefreshing}
+                  className="flex items-center space-x-2 px-3 py-1.5 bg-slate-700/50 hover:bg-slate-600/50 rounded-xl border border-slate-600/50 transition-all duration-200 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Refresh worklog data"
+                >
+                  <RefreshCw
+                    className={`w-4 h-4 text-slate-400 ${
+                      isRefreshing ? "animate-spin" : ""
+                    }`}
+                  />
+                  <span className="text-slate-300">Refresh</span>
+                </button>
+              )}
+            </div>
             <div className="flex items-center space-x-4 text-sm text-slate-400">
               <div className="flex items-center space-x-2">
                 <span className="sr-only">Calendar Icon</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4m-5 4h18"/></svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <rect width="18" height="18" x="3" y="4" rx="2" />
+                  <path d="M16 2v4M8 2v4m-5 4h18" />
+                </svg>
                 <span>{daysInRange.length} days</span>
               </div>
               <div className="w-1 h-1 bg-slate-500 rounded-full"></div>
               <div className="flex items-center space-x-2">
                 <span className="sr-only">Activity Icon</span>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M3 12h3l3 8 4-16 3 8h4"/></svg>
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M3 12h3l3 8 4-16 3 8h4" />
+                </svg>
                 <span>{Object.keys(worklogsByDate).length} active days</span>
               </div>
             </div>
@@ -182,18 +231,20 @@ const DateRangeCalendar = ({
           </div>
         </div>
         <div className="grid grid-cols-7 gap-3 mb-6">
-          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, index) => (
-            <div
-              key={day}
-              className={`text-center py-4 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
-                index === 0 || index === 6
-                  ? "text-orange-400/80"
-                  : "text-slate-300/90"
-              } hover:text-white hover:scale-105`}
-            >
-              {day}
-            </div>
-          ))}
+          {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+            (day, index) => (
+              <div
+                key={day}
+                className={`text-center py-4 text-sm font-bold uppercase tracking-wider transition-all duration-300 ${
+                  index === 0 || index === 6
+                    ? "text-orange-400/80"
+                    : "text-slate-300/90"
+                } hover:text-white hover:scale-105`}
+              >
+                {day}
+              </div>
+            )
+          )}
         </div>
         <div className="space-y-4">
           {weeks.map((week, weekIndex) => (
@@ -308,7 +359,7 @@ const DateRangeCalendar = ({
                             )}
                           </div>
                           <button
-                            onClick={e => {
+                            onClick={(e) => {
                               e.stopPropagation();
                               handleAddWorklog(day);
                             }}
@@ -337,7 +388,8 @@ const DateRangeCalendar = ({
                                 )}
                               </div>
                               <span className="text-xs text-slate-400 bg-slate-700/50 px-2 py-1 rounded-lg border border-slate-600/30">
-                                {dayWorklogs.length} {dayWorklogs.length === 1 ? "log" : "logs"}
+                                {dayWorklogs.length}{" "}
+                                {dayWorklogs.length === 1 ? "log" : "logs"}
                               </span>
                             </div>
                             {/* Enhanced progress bar */}
@@ -350,7 +402,10 @@ const DateRangeCalendar = ({
                                       : "bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 shadow-lg shadow-amber-500/40"
                                   }`}
                                   style={{
-                                    width: `${Math.min((hoursLogged / 8) * 100, 100)}%`,
+                                    width: `${Math.min(
+                                      (hoursLogged / 8) * 100,
+                                      100
+                                    )}%`,
                                   }}
                                 >
                                   {/* Animated shimmer effect */}
@@ -361,7 +416,7 @@ const DateRangeCalendar = ({
                           </div>
                         )}
                       </div>
-            
+
                       {/* Enhanced gradient overlay with shimmer */}
                       <div
                         className={`absolute inset-0 rounded-2xl pointer-events-none transition-all duration-500 ${
@@ -396,4 +451,4 @@ const DateRangeCalendar = ({
   );
 };
 
-export default DateRangeCalendar; 
+export default DateRangeCalendar;

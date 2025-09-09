@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { signIn, useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye,
@@ -11,6 +12,8 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Users,
+  ArrowRight,
 } from "lucide-react";
 
 interface LoginFormProps {
@@ -18,10 +21,13 @@ interface LoginFormProps {
     siteUrl: string;
     email: string;
     apiToken: string;
+    isOAuth?: boolean;
   }) => void;
 }
 
 export default function LoginForm({ onLogin }: LoginFormProps) {
+  const { data: session, status } = useSession();
+  const [loginMethod, setLoginMethod] = useState<"oauth" | "api">("oauth");
   const [siteUrl, setSiteUrl] = useState(
     process.env.NEXT_PUBLIC_JIRA_SITE_URL || ""
   );
@@ -31,8 +37,23 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [jiraSites, setJiraSites] = useState<any[]>([]);
+  const [selectedSite, setSelectedSite] = useState<string>("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Handle OAuth login
+  const handleOAuthLogin = async () => {
+    setIsLoading(true);
+    setError("");
+    try {
+      await signIn("atlassian", { callbackUrl: "/" });
+    } catch (err) {
+      setError("Failed to initiate OAuth login");
+      setIsLoading(false);
+    }
+  };
+
+  // Handle API token login
+  const handleApiLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
@@ -51,7 +72,7 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
       if (response.ok) {
         setSuccess(true);
         setTimeout(() => {
-          onLogin({ siteUrl, email, apiToken });
+          onLogin({ siteUrl, email, apiToken, isOAuth: false });
         }, 1000);
       } else {
         const errorData = await response.json();
@@ -65,6 +86,50 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
       setIsLoading(false);
     }
   };
+
+  // Handle OAuth site selection
+  const handleOAuthSiteSelect = async () => {
+    if (!selectedSite || !session?.accessToken) return;
+
+    setSuccess(true);
+    setTimeout(() => {
+      onLogin({
+        siteUrl: selectedSite,
+        email: session.user?.email || "",
+        apiToken: session.accessToken || "",
+        isOAuth: true,
+      });
+    }, 1000);
+  };
+
+  // Fetch Jira sites when OAuth session is available
+  const fetchJiraSites = async () => {
+    if (!session?.accessToken) return;
+
+    try {
+      const response = await fetch("/api/oauth/sites", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ accessToken: session.accessToken }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setJiraSites(data.sites);
+      }
+    } catch (err) {
+      console.error("Failed to fetch Jira sites:", err);
+    }
+  };
+
+  // Effect to handle OAuth session
+  useEffect(() => {
+    if (session?.accessToken && loginMethod === "oauth") {
+      fetchJiraSites();
+    }
+  }, [session, loginMethod]);
 
   const formVariants = {
     hidden: { opacity: 0, y: 20 },
@@ -108,172 +173,296 @@ export default function LoginForm({ onLogin }: LoginFormProps) {
         </p>
       </motion.div>
 
-      <motion.form
-        onSubmit={handleSubmit}
-        className="space-y-6"
-        variants={itemVariants}
-      >
-        <motion.div variants={itemVariants}>
-          <label
-            htmlFor="siteUrl"
-            className="block text-sm font-medium text-gray-300 mb-2"
+      {/* Login Method Selection */}
+      <motion.div variants={itemVariants} className="mb-6">
+        <div className="flex space-x-1 bg-gray-800/50 p-1 rounded-xl border border-gray-700/50">
+          <button
+            type="button"
+            onClick={() => setLoginMethod("oauth")}
+            className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg transition-all duration-200 ${
+              loginMethod === "oauth"
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:text-gray-300"
+            }`}
           >
-            Site URL
-          </label>
-          <div className="relative">
-            <Globe className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="url"
-              id="siteUrl"
-              value={siteUrl}
-              onChange={(e) => setSiteUrl(e.target.value)}
-              className="input-field pl-12"
-              placeholder="https://your-domain.atlassian.net/"
-              required
-            />
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-300 mb-2"
+            <Users className="w-4 h-4 mr-2" />
+            OAuth Login
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginMethod("api")}
+            className={`flex-1 flex items-center justify-center px-4 py-3 rounded-lg transition-all duration-200 ${
+              loginMethod === "api"
+                ? "bg-blue-600 text-white shadow-lg"
+                : "text-gray-400 hover:text-gray-300"
+            }`}
           >
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="input-field pl-12"
-              placeholder="your-email@example.com"
-              required
-            />
-          </div>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <label
-            htmlFor="apiToken"
-            className="block text-sm font-medium text-gray-300 mb-2"
-          >
+            <Key className="w-4 h-4 mr-2" />
             API Token
-          </label>
-          <div className="relative">
-            <Key className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-            <input
-              type={showToken ? "text" : "password"}
-              id="apiToken"
-              value={apiToken}
-              onChange={(e) => setApiToken(e.target.value)}
-              className="input-field pl-12 pr-12"
-              placeholder="Your JIRA API token"
-              required
-            />
+          </button>
+        </div>
+      </motion.div>
+
+      {/* OAuth Login */}
+      {loginMethod === "oauth" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-6"
+        >
+          {!session && (
             <motion.button
               type="button"
-              onClick={() => setShowToken(!showToken)}
-              className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              onClick={handleOAuthLogin}
+              disabled={isLoading}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              variants={buttonVariants}
+              initial="idle"
+              whileHover={!isLoading ? "hover" : "idle"}
+              whileTap={!isLoading ? "tap" : "idle"}
             >
-              {showToken ? (
-                <EyeOff className="w-5 h-5" />
-              ) : (
-                <Eye className="w-5 h-5" />
-              )}
+              <AnimatePresence mode="wait">
+                {isLoading ? (
+                  <motion.div
+                    key="loading"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center"
+                  >
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Connecting to Atlassian...
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="idle"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-center justify-center"
+                  >
+                    <Users className="w-5 h-5 mr-2" />
+                    Continue with Atlassian
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </motion.button>
-          </div>
-          <motion.p
-            className="text-xs text-gray-500 mt-2"
-            variants={itemVariants}
-          >
-            Generate an API token from your{" "}
-            <a
-              href="https://id.atlassian.com/manage-profile/security/api-tokens"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+          )}
+
+          {session && jiraSites.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
             >
-              Atlassian Account Settings
-            </a>
-          </motion.p>
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  Select your Jira site
+                </label>
+                <select
+                  value={selectedSite}
+                  onChange={(e) => setSelectedSite(e.target.value)}
+                  className="w-full input-field"
+                  required
+                >
+                  <option value="">Choose a Jira site...</option>
+                  {jiraSites.map((site) => (
+                    <option key={site.id} value={site.url}>
+                      {site.name} ({site.url})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <motion.button
+                type="button"
+                onClick={handleOAuthSiteSelect}
+                disabled={!selectedSite || isLoading}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                variants={buttonVariants}
+                initial="idle"
+                whileHover={!isLoading && selectedSite ? "hover" : "idle"}
+                whileTap={!isLoading && selectedSite ? "tap" : "idle"}
+              >
+                <ArrowRight className="w-5 h-5 mr-2" />
+                Continue to Dashboard
+              </motion.button>
+            </motion.div>
+          )}
         </motion.div>
+      )}
 
-        <AnimatePresence mode="wait">
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center"
-            >
-              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-              {error}
-            </motion.div>
-          )}
-
-          {success && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center"
-            >
-              <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
-              Connection successful! Redirecting...
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <motion.button
-          type="submit"
-          disabled={isLoading || success}
-          className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-          variants={buttonVariants}
-          initial="idle"
-          whileHover={!isLoading && !success ? "hover" : "idle"}
-          whileTap={!isLoading && !success ? "tap" : "idle"}
+      {/* API Token Login */}
+      {loginMethod === "api" && (
+        <motion.form
+          onSubmit={handleApiLogin}
+          className="space-y-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          variants={itemVariants}
         >
+          <motion.div variants={itemVariants}>
+            <label
+              htmlFor="siteUrl"
+              className="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Site URL
+            </label>
+            <div className="relative">
+              <Globe className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="url"
+                id="siteUrl"
+                value={siteUrl}
+                onChange={(e) => setSiteUrl(e.target.value)}
+                className="input-field pl-12"
+                placeholder="https://your-domain.atlassian.net/"
+                required
+              />
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Email
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="input-field pl-12"
+                placeholder="your-email@example.com"
+                required
+              />
+            </div>
+          </motion.div>
+
+          <motion.div variants={itemVariants}>
+            <label
+              htmlFor="apiToken"
+              className="block text-sm font-medium text-gray-300 mb-2"
+            >
+              API Token
+            </label>
+            <div className="relative">
+              <Key className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type={showToken ? "text" : "password"}
+                id="apiToken"
+                value={apiToken}
+                onChange={(e) => setApiToken(e.target.value)}
+                className="input-field pl-12 pr-12"
+                placeholder="Your JIRA API token"
+                required
+              />
+              <motion.button
+                type="button"
+                onClick={() => setShowToken(!showToken)}
+                className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-300 transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+              >
+                {showToken ? (
+                  <EyeOff className="w-5 h-5" />
+                ) : (
+                  <Eye className="w-5 h-5" />
+                )}
+              </motion.button>
+            </div>
+            <motion.p
+              className="text-xs text-gray-500 mt-2"
+              variants={itemVariants}
+            >
+              Generate an API token from your{" "}
+              <a
+                href="https://id.atlassian.com/manage-profile/security/api-tokens"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+              >
+                Atlassian Account Settings
+              </a>
+            </motion.p>
+          </motion.div>
+
           <AnimatePresence mode="wait">
-            {isLoading ? (
+            {error && (
               <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-center"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-lg text-sm flex items-center"
               >
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Connecting...
+                <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                {error}
               </motion.div>
-            ) : success ? (
+            )}
+
+            {success && (
               <motion.div
-                key="success"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center justify-center"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="bg-green-500/10 border border-green-500/20 text-green-400 px-4 py-3 rounded-lg text-sm flex items-center"
               >
-                <CheckCircle className="w-5 h-5 mr-2" />
-                Connected!
+                <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                Connection successful! Redirecting...
               </motion.div>
-            ) : (
-              <motion.span
-                key="idle"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-              >
-                Connect to JIRA
-              </motion.span>
             )}
           </AnimatePresence>
-        </motion.button>
-      </motion.form>
+
+          <motion.button
+            type="submit"
+            disabled={isLoading || success}
+            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            variants={buttonVariants}
+            initial="idle"
+            whileHover={!isLoading && !success ? "hover" : "idle"}
+            whileTap={!isLoading && !success ? "tap" : "idle"}
+          >
+            <AnimatePresence mode="wait">
+              {isLoading ? (
+                <motion.div
+                  key="loading"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center justify-center"
+                >
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  Connecting...
+                </motion.div>
+              ) : success ? (
+                <motion.div
+                  key="success"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="flex items-center justify-center"
+                >
+                  <CheckCircle className="w-5 h-5 mr-2" />
+                  Connected!
+                </motion.div>
+              ) : (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  Connect to JIRA
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
+        </motion.form>
+      )}
     </motion.div>
   );
 }

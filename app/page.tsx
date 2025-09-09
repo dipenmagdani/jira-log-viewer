@@ -10,6 +10,7 @@ interface AuthData {
   siteUrl: string;
   email: string;
   apiToken: string;
+  isOAuth?: boolean;
 }
 
 const STORAGE_KEY = "jira-worklog-credentials";
@@ -54,11 +55,12 @@ export default function Home() {
   }, []);
 
   const handleLogin = (credentials: AuthData) => {
-    // Save credentials to localStorage
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
     setAuthData(credentials);
+    // Save credentials to localStorage for persistence (only for API token method)
+    if (!credentials.isOAuth) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(credentials));
+    }
   };
-
   const handleLogout = () => {
     // Clear credentials from localStorage
     localStorage.removeItem(STORAGE_KEY);

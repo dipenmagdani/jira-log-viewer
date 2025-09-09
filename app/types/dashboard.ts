@@ -122,6 +122,8 @@ export interface DateRangeCalendarProps {
   setWorklogForm: (form: any) => void;
   setShowWorklogModal: (show: boolean) => void;
   setDayWorklogs: (worklogs: JiraWorklog[]) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export interface WorklogListProps {
@@ -129,4 +131,4 @@ export interface WorklogListProps {
   onEditClick: (worklog: JiraWorklog) => void;
   onAddNewClick: () => void;
   onClose: () => void;
-} 
+}

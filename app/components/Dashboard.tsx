@@ -83,7 +83,7 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
 
   // Date range states
   const [startDate, setStartDate] = useState<Date | null>(
-    subDays(new Date(), 7)
+    startOfMonth(new Date())
   );
   const [endDate, setEndDate] = useState<Date | null>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -381,7 +381,11 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
     }
   };
 
-  const filteredWorklogs = getFilteredWorklogs(dashboardData, searchTerm, selectedProject);
+  const filteredWorklogs = getFilteredWorklogs(
+    dashboardData,
+    searchTerm,
+    selectedProject
+  );
 
   if (isLoading) {
     return (
@@ -594,6 +598,8 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
                   setWorklogForm={setWorklogForm}
                   setShowWorklogModal={setShowWorklogModal}
                   setDayWorklogs={setDayWorklogs}
+                  onRefresh={handleRefresh}
+                  isRefreshing={isRefreshing}
                 />
               </div>
 
@@ -927,7 +933,7 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
             </div>
 
             {/* All Worklogs */}
-            <div className="glass-card p-6" >
+            <div className="glass-card p-6">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="text-xl font-semibold text-white flex items-center">
                   <Clock className="w-5 h-5 mr-2 text-blue-400" />
