@@ -20,7 +20,7 @@ const authOptions: NextAuthOptions = {
       userinfo: "https://api.atlassian.com/me",
       clientId: process.env.ATLASSIAN_CLIENT_ID,
       clientSecret: process.env.ATLASSIAN_CLIENT_SECRET,
-      profile(profile) {
+      profile(profile: any) {
         return {
           id: profile.account_id,
           name: profile.name,
@@ -47,11 +47,13 @@ const authOptions: NextAuthOptions = {
     },
   },
   pages: {
-    signIn: "/login",
+    signIn: "/",
+    error: "/",
   },
   session: {
     strategy: "jwt",
   },
+  debug: process.env.NODE_ENV === "development",
 };
 
 const handler = NextAuth(authOptions);

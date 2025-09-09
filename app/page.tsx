@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { Activity } from "lucide-react";
 import LoginForm from "./components/LoginForm";
@@ -16,8 +17,18 @@ interface AuthData {
 const STORAGE_KEY = "jira-worklog-credentials";
 
 export default function Home() {
+  const searchParams = useSearchParams();
   const [authData, setAuthData] = useState<AuthData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [oauthError, setOauthError] = useState<string>("");
+
+  // Check for OAuth errors in URL
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      setOauthError(`OAuth Error: ${error}`);
+    }
+  }, [searchParams]);
 
   // Load saved credentials on component mount
   useEffect(() => {
