@@ -146,11 +146,11 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
 
     try {
       const [worklogs, analytics, projects, user, issues] = await Promise.all([
-        fetchWorklogs(authData, startDate, endDate),
-        fetchAnalytics(authData, startDate, endDate),
-        fetchProjects(authData),
-        fetchUserInfo(authData),
-        fetchIssues(authData),
+        fetchWorklogs(startDate, endDate),
+        fetchAnalytics(startDate, endDate),
+        fetchProjects(),
+        fetchUserInfo(),
+        fetchIssues(),
       ]);
       setDashboardData(worklogs);
       setAnalyticsData(analytics);
@@ -241,7 +241,6 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
       const endpoint = isEditMode ? "/api/update-worklog" : "/api/add-worklog";
 
       const response = await fetchApi(endpoint, {
-        ...authData,
         worklog: {
           ...worklogData,
           id: currentWorklog?.id, // Only needed for edit mode
@@ -313,7 +312,6 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
 
     try {
       const response = await fetchApi("/api/delete-worklog", {
-        ...authData,
         worklogId,
       });
 
@@ -351,7 +349,6 @@ export default function Dashboard({ authData, onLogout }: DashboardProps) {
     setSearchLoading(true);
     try {
       const response = await fetchApi("/api/search", {
-        ...authData,
         query: searchTerm,
         projectKey: selectedProject !== "all" ? selectedProject : undefined,
         startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,

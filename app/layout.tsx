@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
-import Providers from "./components/Providers";
 
 export const metadata: Metadata = {
   title: "JIRA Worklog Viewer",
@@ -16,7 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Providers>{children}</Providers>
+        {children}
         <Toaster
           position="top-right"
           toastOptions={{

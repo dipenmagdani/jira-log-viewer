@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthHeaders } from "../../utils/serverAuth";
 
 export async function GET(request: NextRequest) {
   try {
@@ -157,24 +158,28 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { siteUrl, email, apiToken, filters } = await request.json();
+    const body = await request.json();
+    const { siteUrl, email, apiToken, accessToken, isOAuth, filters } = body;
 
-    if (!siteUrl || !email || !apiToken) {
+    if (!siteUrl || !email) {
       return NextResponse.json(
         { message: "Missing required parameters" },
         { status: 400 }
       );
     }
 
-    // Create base64 encoded credentials
-    const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64");
+    // Get auth headers using the utility function
+    const authHeaders = getAuthHeaders({
+      siteUrl,
+      email,
+      apiToken,
+      accessToken,
+      isOAuth,
+    });
 
     // Get user info first
     const userResponse = await fetch(`${siteUrl}/rest/api/3/myself`, {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        Accept: "application/json",
-      },
+      headers: authHeaders,
     });
 
     if (!userResponse.ok) {

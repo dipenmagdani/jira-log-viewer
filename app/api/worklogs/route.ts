@@ -49,32 +49,71 @@ interface JiraWorklog {
 
 export async function POST(request: NextRequest) {
   try {
-    const { siteUrl, email, apiToken, startDate, endDate } =
-      await request.json();
+    const body = await request.json();
+    const {
+      siteUrl,
+      email,
+      apiToken,
+      accessToken,
+      isOAuth,
+      startDate,
+      endDate,
+    } = body;
 
-    if (!siteUrl || !email || !apiToken || !startDate || !endDate) {
+    console.log("Worklogs API - Received request:", {
+      siteUrl,
+      email,
+      hasAccessToken: !!accessToken,
+      hasApiToken: !!apiToken,
+      isOAuth,
+      startDate,
+      endDate,
+    });
+
+    if (!siteUrl || !email || !startDate || !endDate) {
       return NextResponse.json(
         { message: "Missing required parameters" },
         { status: 400 }
       );
     }
 
-    // Create base64 encoded credentials
-    const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64");
+    // Set up authorization headers based on auth type
+    let authHeaders: Record<string, string>;
+
+    if (isOAuth && accessToken) {
+      // OAuth authentication
+      authHeaders = {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      };
+      console.log("Using OAuth authentication for worklogs");
+    } else if (apiToken) {
+      // Basic authentication (fallback)
+      const credentials = Buffer.from(`${email}:${apiToken}`).toString(
+        "base64"
+      );
+      authHeaders = {
+        Authorization: `Basic ${credentials}`,
+        Accept: "application/json",
+      };
+      console.log("Using Basic authentication for worklogs");
+    } else {
+      return NextResponse.json(
+        { message: "Missing authentication credentials" },
+        { status: 400 }
+      );
+    }
 
     // First, get the current user's account ID
     const userResponse = await fetch(`${siteUrl}/rest/api/3/myself`, {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        Accept: "application/json",
-      },
+      headers: authHeaders,
     });
 
     if (!userResponse.ok) {
       const errorText = await userResponse.text();
       console.error("Failed to get user information:", errorText);
       return NextResponse.json(
-        { message: "Failed to authenticate with JIRA" },
+        { message: `Failed to authenticate with JIRA: ${errorText}` },
         { status: 401 }
       );
     }
@@ -88,8 +127,7 @@ export async function POST(request: NextRequest) {
     const searchResponse = await fetch(`${siteUrl}/rest/api/3/search`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${credentials}`,
-        Accept: "application/json",
+        ...authHeaders,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({

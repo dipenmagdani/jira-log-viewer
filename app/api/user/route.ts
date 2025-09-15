@@ -2,24 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { siteUrl, email, apiToken } = await request.json();
+    const body = await request.json();
+    const { siteUrl, email, apiToken, accessToken, isOAuth } = body;
 
-    if (!siteUrl || !email || !apiToken) {
+    if (!siteUrl || !email) {
       return NextResponse.json(
         { message: "Missing required parameters" },
         { status: 400 }
       );
     }
 
-    // Create base64 encoded credentials
-    const credentials = Buffer.from(`${email}:${apiToken}`).toString("base64");
+    // Set up authorization headers based on auth type
+    let authHeaders: Record<string, string>;
+
+    if (isOAuth && accessToken) {
+      // OAuth authentication
+      authHeaders = {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      };
+    } else if (apiToken) {
+      // Basic authentication (fallback)
+      const credentials = Buffer.from(`${email}:${apiToken}`).toString(
+        "base64"
+      );
+      authHeaders = {
+        Authorization: `Basic ${credentials}`,
+        Accept: "application/json",
+      };
+    } else {
+      return NextResponse.json(
+        { message: "Missing authentication credentials" },
+        { status: 400 }
+      );
+    }
 
     // Get user info
     const userResponse = await fetch(`${siteUrl}/rest/api/3/myself`, {
-      headers: {
-        Authorization: `Basic ${credentials}`,
-        Accept: "application/json",
-      },
+      headers: authHeaders,
     });
 
     if (!userResponse.ok) {
@@ -35,10 +55,7 @@ export async function POST(request: NextRequest) {
     const groupsResponse = await fetch(
       `${siteUrl}/rest/api/3/user/groups?accountId=${userData.accountId}`,
       {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          Accept: "application/json",
-        },
+        headers: authHeaders,
       }
     );
 
@@ -50,10 +67,7 @@ export async function POST(request: NextRequest) {
     const permissionsResponse = await fetch(
       `${siteUrl}/rest/api/3/mypermissions`,
       {
-        headers: {
-          Authorization: `Basic ${credentials}`,
-          Accept: "application/json",
-        },
+        headers: authHeaders,
       }
     );
 

@@ -22,6 +22,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import "../styles/datepicker.css";
 import toast from "react-hot-toast";
 import CustomCombobox from "./CustomCombobox";
+import { getAuthPayload } from "../utils/authUtils";
 
 interface AuthData {
   siteUrl: string;
@@ -87,10 +88,11 @@ const AddWorklogForm = ({
     const fetchProjects = async () => {
       setIsLoadingProjects(true);
       try {
+        const authPayload = getAuthPayload();
         const response = await fetch("/api/projects", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(authData),
+          body: JSON.stringify(authPayload),
         });
         const data = await response.json();
         setProjects(data.projects || []);
@@ -110,11 +112,12 @@ const AddWorklogForm = ({
     if (projectId) {
       setIsLoadingIssues(true);
       try {
+        const authPayload = getAuthPayload();
         const response = await fetch("/api/issues", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            ...authData,
+            ...authPayload,
             filters: { project: projectId },
           }),
         });
@@ -146,11 +149,12 @@ const AddWorklogForm = ({
     // Fetch subtasks for the selected issue, only if it's not a subtask itself
     if (issueId && issue?.key) {
       setIsLoadingSubtasks(true);
+      const authPayload = getAuthPayload();
       fetch("/api/issues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...authData,
+          ...authPayload,
           filters: { parent: issue.key },
         }),
       })
