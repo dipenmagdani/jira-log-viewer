@@ -71,21 +71,38 @@ export const getAuthHeaders = (): HeadersInit => {
 };
 
 export const getAuthPayload = () => {
+  // First try OAuth
   const authData = getStoredAuth();
-  if (!authData) {
-    throw new Error("No authentication data found");
+  if (authData) {
+    const primarySite = authData.sites[0];
+    if (primarySite) {
+      return {
+        siteUrl: primarySite.url,
+        email: authData.user.email,
+        accessToken: authData.tokens.access_token,
+        atlassianAccountId: authData.user.account_id,
+        isOAuth: true,
+      };
+    }
   }
 
-  const primarySite = authData.sites[0];
-  if (!primarySite) {
-    throw new Error("No accessible sites found");
+  // Fallback to Basic auth (check localStorage for basic auth data)
+  if (typeof window !== "undefined") {
+    const basicAuth = localStorage.getItem("jira_basic_auth");
+    if (basicAuth) {
+      try {
+        const basicAuthData = JSON.parse(basicAuth);
+        return {
+          siteUrl: basicAuthData.siteUrl,
+          email: basicAuthData.email,
+          apiToken: basicAuthData.apiToken,
+          isOAuth: false,
+        };
+      } catch (error) {
+        console.error("Error parsing basic auth data:", error);
+      }
+    }
   }
 
-  return {
-    siteUrl: primarySite.url,
-    email: authData.user.email,
-    accessToken: authData.tokens.access_token,
-    atlassianAccountId: authData.user.account_id,
-    isOAuth: true, // Flag to indicate OAuth authentication
-  };
+  throw new Error("No authentication data found");
 };

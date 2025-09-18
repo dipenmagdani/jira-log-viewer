@@ -1,6 +1,6 @@
 /**
  * Worklogs API Route - Jira REST API v3
- * 
+ *
  * Implements the Jira Worklogs REST API v3 endpoints:
  * - GET /rest/api/3/worklog/list
  * - GET /rest/api/3/worklog/updated
@@ -72,10 +72,10 @@ interface WorklogIdsResponse {
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const since = searchParams.get('since'); // Unix timestamp in milliseconds
-    const expand = searchParams.getAll('expand');
-    const maxResults = parseInt(searchParams.get('maxResults') || '1000');
-    const startAt = parseInt(searchParams.get('startAt') || '0');
+    const since = searchParams.get("since"); // Unix timestamp in milliseconds
+    const expand = searchParams.getAll("expand");
+    const maxResults = parseInt(searchParams.get("maxResults") || "1000");
+    const startAt = parseInt(searchParams.get("startAt") || "0");
 
     // Get authentication data
     const authData = getAuthPayload();
@@ -96,12 +96,12 @@ export async function GET(request: NextRequest) {
           { status: 400 }
         );
       }
-      
+
       baseUrl = authData.siteUrl;
       headers = {
-        'Authorization': `Bearer ${authData.accessToken}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authData.accessToken}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
       };
     } else {
       if (!authData.siteUrl || !authData.email || !authData.apiToken) {
@@ -112,47 +112,49 @@ export async function GET(request: NextRequest) {
       }
 
       baseUrl = authData.siteUrl;
-      const credentials = Buffer.from(`${authData.email}:${authData.apiToken}`).toString('base64');
+      const credentials = Buffer.from(
+        `${authData.email}:${authData.apiToken}`
+      ).toString("base64");
       headers = {
-        'Authorization': `Basic ${credentials}`,
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
+        Authorization: `Basic ${credentials}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
       };
     }
 
     let jiraUrl: URL;
-    
+
     if (since) {
       // Use updated worklogs endpoint for time-based filtering
       jiraUrl = new URL(`${baseUrl}/rest/api/3/worklog/updated`);
-      jiraUrl.searchParams.set('since', since);
+      jiraUrl.searchParams.set("since", since);
     } else {
       // Use list endpoint for general worklog listing
       jiraUrl = new URL(`${baseUrl}/rest/api/3/worklog/list`);
     }
 
     // Add common parameters
-    if (expand.length > 0) jiraUrl.searchParams.set('expand', expand.join(','));
+    if (expand.length > 0) jiraUrl.searchParams.set("expand", expand.join(","));
 
-    console.log('Fetching worklogs from:', jiraUrl.toString());
+    console.log("Fetching worklogs from:", jiraUrl.toString());
 
     let worklogIds: number[] = [];
 
     if (since) {
       // First get worklog IDs that were updated since the timestamp
       const idsResponse = await fetch(jiraUrl.toString(), {
-        method: 'GET',
+        method: "GET",
         headers,
       });
 
       if (!idsResponse.ok) {
         const errorText = await idsResponse.text();
-        console.error('Jira API error (IDs):', idsResponse.status, errorText);
+        console.error("Jira API error (IDs):", idsResponse.status, errorText);
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: `Jira API error: ${idsResponse.status} ${idsResponse.statusText}`,
-            details: errorText
+            details: errorText,
           },
           { status: idsResponse.status }
         );
@@ -160,10 +162,10 @@ export async function GET(request: NextRequest) {
 
       const idsData: WorklogIdsResponse = await idsResponse.json();
       worklogIds = idsData.values;
-      
+
       // Apply pagination to worklog IDs
       const paginatedIds = worklogIds.slice(startAt, startAt + maxResults);
-      
+
       if (paginatedIds.length === 0) {
         return NextResponse.json({
           success: true,
@@ -173,14 +175,14 @@ export async function GET(request: NextRequest) {
             maxResults,
             total: worklogIds.length,
             isLast: true,
-          }
+          },
         });
       }
 
       // Now get the actual worklog details
       const detailsUrl = new URL(`${baseUrl}/rest/api/3/worklog/list`);
       const response = await fetch(detailsUrl.toString(), {
-        method: 'POST',
+        method: "POST",
         headers,
         body: JSON.stringify({
           ids: paginatedIds,
@@ -190,12 +192,12 @@ export async function GET(request: NextRequest) {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('Jira API error (details):', response.status, errorText);
+        console.error("Jira API error (details):", response.status, errorText);
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: `Jira API error: ${response.status} ${response.statusText}`,
-            details: errorText
+            details: errorText,
           },
           { status: response.status }
         );
@@ -211,30 +213,36 @@ export async function GET(request: NextRequest) {
           maxResults,
           total: worklogIds.length,
           isLast: startAt + maxResults >= worklogIds.length,
-        }
+        },
       });
-
     } else {
       // For general listing, we need to use a different approach since the list endpoint requires IDs
       // We'll search for recent issues and get their worklogs
       const searchUrl = new URL(`${baseUrl}/rest/api/3/search`);
-      searchUrl.searchParams.set('jql', 'worklogDate >= -30d ORDER BY updated DESC');
-      searchUrl.searchParams.set('fields', 'worklog');
-      searchUrl.searchParams.set('maxResults', '50');
+      searchUrl.searchParams.set(
+        "jql",
+        "worklogDate >= -30d ORDER BY updated DESC"
+      );
+      searchUrl.searchParams.set("fields", "worklog");
+      searchUrl.searchParams.set("maxResults", "50");
 
       const searchResponse = await fetch(searchUrl.toString(), {
-        method: 'GET',
+        method: "GET",
         headers,
       });
 
       if (!searchResponse.ok) {
         const errorText = await searchResponse.text();
-        console.error('Jira search API error:', searchResponse.status, errorText);
+        console.error(
+          "Jira search API error:",
+          searchResponse.status,
+          errorText
+        );
         return NextResponse.json(
-          { 
-            success: false, 
+          {
+            success: false,
             error: `Jira search API error: ${searchResponse.status} ${searchResponse.statusText}`,
-            details: errorText
+            details: errorText,
           },
           { status: searchResponse.status }
         );
@@ -257,10 +265,15 @@ export async function GET(request: NextRequest) {
       }
 
       // Sort by updated date (most recent first)
-      allWorklogs.sort((a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime());
+      allWorklogs.sort(
+        (a, b) => new Date(b.updated).getTime() - new Date(a.updated).getTime()
+      );
 
       // Apply pagination
-      const paginatedWorklogs = allWorklogs.slice(startAt, startAt + maxResults);
+      const paginatedWorklogs = allWorklogs.slice(
+        startAt,
+        startAt + maxResults
+      );
 
       return NextResponse.json({
         success: true,
@@ -270,16 +283,15 @@ export async function GET(request: NextRequest) {
           maxResults,
           total: allWorklogs.length,
           isLast: startAt + maxResults >= allWorklogs.length,
-        }
+        },
       });
     }
-
   } catch (error) {
-    console.error('Worklogs API error:', error);
+    console.error("Worklogs API error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
@@ -296,24 +308,27 @@ export async function POST(request: NextRequest) {
 
     // Convert POST to GET request
     const searchParams = new URLSearchParams();
-    if (since) searchParams.set('since', since.toString());
-    if (expand) searchParams.set('expand', Array.isArray(expand) ? expand.join(',') : expand);
-    if (maxResults) searchParams.set('maxResults', maxResults.toString());
-    if (startAt) searchParams.set('startAt', startAt.toString());
+    if (since) searchParams.set("since", since.toString());
+    if (expand)
+      searchParams.set(
+        "expand",
+        Array.isArray(expand) ? expand.join(",") : expand
+      );
+    if (maxResults) searchParams.set("maxResults", maxResults.toString());
+    if (startAt) searchParams.set("startAt", startAt.toString());
 
     const getRequest = new NextRequest(
       `${request.nextUrl.origin}${request.nextUrl.pathname}?${searchParams.toString()}`,
-      { method: 'GET', headers: request.headers }
+      { method: "GET", headers: request.headers }
     );
 
     return GET(getRequest);
-
   } catch (error) {
-    console.error('Worklogs POST API error:', error);
+    console.error("Worklogs POST API error:", error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+      {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
